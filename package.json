@@ -1,0 +1,16 @@
+{
+  "name": "pgsql_tp",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "colors": "^1.4.0",
+    "csvtojson": "^2.0.10",
+    "dayjs": "^1.10.7",
+    "dotenv": "^10.0.0",
+    "pg": "^8.8.0"
+  },
+  "scripts": {
+    "start": "node index.js"
+  }
+}

@@ -1,0 +1,21 @@
+version: "3.7"
+services:
+  db:
+    image: postgres
+    ports:
+      - 5432:5432
+    volumes:
+      - ./docker/data:/var/lib/postgresql/data #local PG Storage
+      - ./docker/init.sh:/docker-entrypoint-initdb.d/init.sh
+      - ./docker/ex1.sql:/ex1.sql:ro
+    environment:
+      - POSTGRES_DB=postgres # Default Database
+      - POSTGRES_USER=postgres # postgres Username
+      - POSTGRES_PASSWORD=postgres # postgres Password 
+  pgadmin:
+    image: docker.io/bitnami/phppgadmin:7
+    environment:
+      DATABASE_HOST: db
+      DATABASE_PORT_NUMBER: 5432
+    ports:
+      - 8081:8080
