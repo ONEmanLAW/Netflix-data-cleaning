@@ -15,7 +15,10 @@ try {
     $insertSaison = $pdo->prepare("INSERT INTO saisons (num_saison, id_serie) VALUES (:num_saison, :id_serie) ON CONFLICT (num_saison, id_serie) DO NOTHING RETURNING id_saison;");
     $insertEpisode = $pdo->prepare("INSERT INTO episodes (id_saison, num_episode) VALUES (:id_saison, :num_episode) ON CONFLICT (id_saison, num_episode) DO NOTHING RETURNING id_episode;");
     $insertFilm = $pdo->prepare("INSERT INTO films (nom_film) VALUES (:nom_film) ON CONFLICT (nom_film) DO NOTHING RETURNING id_film;");
-    $insertVisionnage = $pdo->prepare("INSERT INTO visionnages (id_profil, id_episode, id_film, debut_visionnage, duree_visionnage) VALUES (:id_profil, :id_episode, :id_film, :debut_visionnage, :duree_visionnage);");
+    
+    // Mise à jour pour inclure id_saison et id_serie dans l'insertion de visionnages
+    $insertVisionnage = $pdo->prepare("INSERT INTO visionnages (id_profil, id_episode, id_film, id_saison, id_serie, debut_visionnage, duree_visionnage) VALUES (:id_profil, :id_episode, :id_film, :id_saison, :id_serie, :debut_visionnage, :duree_visionnage);");
+    
     $insertAppareil = $pdo->prepare("INSERT INTO appareils (type_appareil) VALUES (:type_appareil) ON CONFLICT (type_appareil) DO NOTHING RETURNING id_appareil;");
     $insertVisionnageAppareil = $pdo->prepare("INSERT INTO visionnage_appareil (id_visionnage, id_appareil) VALUES (:id_visionnage, :id_appareil);");
 
@@ -101,10 +104,13 @@ try {
 
                     // Insérer dans visionnages si idEpisode est défini
                     if (isset($idEpisode)) {
+                        // Maintenant, inclure id_saison et id_serie dans l'insertion
                         $insertVisionnage->execute([
                             ':id_profil' => $idProfil,
                             ':id_episode' => $idEpisode,
                             ':id_film' => null,
+                            ':id_saison' => $idSaison, // Nouveau paramètre
+                            ':id_serie' => $idSerie,   // Nouveau paramètre
                             ':debut_visionnage' => $debutVisionnage->format('Y-m-d H:i:s'),
                             ':duree_visionnage' => $dureeVisionnage
                         ]);
@@ -129,6 +135,8 @@ try {
                         ':id_profil' => $idProfil,
                         ':id_episode' => null,
                         ':id_film' => $idFilm,
+                        ':id_saison' => null, // Pas de saison pour les films
+                        ':id_serie' => null,   // Pas de série pour les films
                         ':debut_visionnage' => $debutVisionnage->format('Y-m-d H:i:s'),
                         ':duree_visionnage' => $dureeVisionnage
                     ]);
