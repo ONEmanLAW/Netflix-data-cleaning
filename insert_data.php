@@ -1,112 +1,162 @@
 <?php
-// Connexion à PostgreSQL
-$host = 'https://bdd.h91.co'; // Votre hôte
-$db = 'exo1_hugo'; // Nom de la base de données
-$user = 'hugo'; // Votre utilisateur
-$pass = 'tp1_hugo'; // Votre mot de passe
+// Connexion à la base de données PostgreSQL
+$dsn = 'pgsql:host=bdd.h91.co;dbname=exo1_hugo';
+$user = 'hugo';
+$password = 'tp1_hugo';
 
-$conn = pg_connect("host=$host dbname=$db user=$user password=$pass");
-if (!$conn) {
-    die("Connection failed: " . pg_last_error());
-}
+try {
+    $pdo = new PDO($dsn, $user, $password);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    echo "Connexion à la base de données réussie.\n"; // Vérification de connexion
 
-// Lire le fichier CSV
-$csvFile = fopen('ViewingActivity.csv', 'r');
-if (!$csvFile) {
-    die("Impossible d'ouvrir le fichier CSV.");
-}
+    // Préparation des requêtes
+    $insertProfil = $pdo->prepare("INSERT INTO profils (nom_profil) VALUES (:nom_profil) ON CONFLICT (nom_profil) DO NOTHING RETURNING id_profil;");
+    $insertSerie = $pdo->prepare("INSERT INTO series (nom_serie) VALUES (:nom_serie) ON CONFLICT (nom_serie) DO NOTHING RETURNING id_serie;");
+    $insertSaison = $pdo->prepare("INSERT INTO saisons (num_saison, id_serie) VALUES (:num_saison, :id_serie) ON CONFLICT (num_saison, id_serie) DO NOTHING RETURNING id_saison;");
+    $insertEpisode = $pdo->prepare("INSERT INTO episodes (id_saison, num_episode) VALUES (:id_saison, :num_episode) ON CONFLICT (id_saison, num_episode) DO NOTHING RETURNING id_episode;");
+    $insertFilm = $pdo->prepare("INSERT INTO films (nom_film) VALUES (:nom_film) ON CONFLICT (nom_film) DO NOTHING RETURNING id_film;");
+    $insertVisionnage = $pdo->prepare("INSERT INTO visionnages (id_profil, id_episode, id_film, debut_visionnage, duree_visionnage) VALUES (:id_profil, :id_episode, :id_film, :debut_visionnage, :duree_visionnage);");
+    $insertAppareil = $pdo->prepare("INSERT INTO appareils (type_appareil) VALUES (:type_appareil) ON CONFLICT (type_appareil) DO NOTHING RETURNING id_appareil;");
+    $insertVisionnageAppareil = $pdo->prepare("INSERT INTO visionnage_appareil (id_visionnage, id_appareil) VALUES (:id_visionnage, :id_appareil);");
 
-// Ignorer la première ligne (en-tête)
-fgetcsv($csvFile);
+    // Ouverture du fichier CSV
+    if (($handle = fopen('ViewingActivity.csv', 'r')) !== false) {
+        // Sauter l'en-tête
+        fgetcsv($handle);
 
-// Boucle à travers chaque ligne du CSV
-while (($record = fgetcsv($csvFile, 1000, ',')) !== FALSE) {
-    // Extraction des données
-    list($profil, $titre_serie, $saison, $episode, $titre_film, $debut_visionnage, $fin_visionnage, $appareil) = $record;
+        while (($data = fgetcsv($handle)) !== false) {
+            // Extraction des données
+            $nomProfil = trim($data[0]);
+            $debutVisionnageString = trim($data[1]);
+            $dureeVisionnage = trim($data[2]);
+            $attributes = trim($data[3]);
+            $title = trim($data[4]);
+            $deviceType = trim($data[6]);
 
-    // Insertion des profils
-    $nom_profil = pg_escape_string($profil);
-    $insertProfil = "INSERT INTO profils (nom_profil) VALUES ('$nom_profil') ON CONFLICT (nom_profil) DO NOTHING;";
-    pg_query($conn, $insertProfil);
+            // Débogage de l'extraction des données
+            echo "Traitement de la ligne :\n";
+            echo "Profil : $nomProfil, Début : $debutVisionnageString, Durée : $dureeVisionnage, Attributes : $attributes, Title : $title, Device Type : $deviceType\n";
 
-    // Insertion des séries
-    $nom_serie = pg_escape_string($titre_serie);
-    $insertSerie = "INSERT INTO series (nom_serie) VALUES ('$nom_serie') ON CONFLICT (nom_serie) DO NOTHING;";
-    pg_query($conn, $insertSerie);
+            // Conditions pour filtrer les lignes
+            if (!empty($attributes) && strpos($attributes, 'User_Interaction') === false) {
+                echo "Ligne ignorée en raison d'attributs non valides.\n";
+                continue; // Ignorer cette ligne si elle ne respecte pas les conditions
+            }
 
-    // Récupérer l'ID de la série insérée
-    $result = pg_query($conn, "SELECT id_serie FROM series WHERE nom_serie = '$nom_serie';");
-    $serie_row = pg_fetch_assoc($result);
-    $id_serie = $serie_row['id_serie'];
+            if (!empty($data[5])) {
+                echo "Ligne ignorée en raison de Supplemental Video Type non vide.\n";
+                continue; // Ignorer cette ligne si la colonne est non vide
+            }
 
-    // Insertion des saisons
-    $num_saison = intval($saison);
-    $insertSaison = "INSERT INTO saisons (num_saison, id_serie) VALUES ($num_saison, $id_serie) ON CONFLICT (num_saison, id_serie) DO NOTHING;";
-    pg_query($conn, $insertSaison);
+            // Vérifier plusieurs formats de date
+            $debutVisionnage = DateTime::createFromFormat('Y/m/d - H:i:s', $debutVisionnageString);
+            if (!$debutVisionnage) {
+                $debutVisionnage = DateTime::createFromFormat('Y-m-d H:i:s', $debutVisionnageString);
+            }
 
-    // Récupérer l'ID de la saison insérée
-    $result = pg_query($conn, "SELECT id_saison FROM saisons WHERE num_saison = $num_saison AND id_serie = $id_serie;");
-    $saison_row = pg_fetch_assoc($result);
-    $id_saison = $saison_row['id_saison'];
+            // Vérifier si la création de l'objet DateTime a réussi
+            if (!$debutVisionnage) {
+                echo "Erreur lors de la création de DateTime pour la chaîne : $debutVisionnageString. Erreurs : " . implode(", ", DateTime::getLastErrors()) . "\n";
+                continue; // Ignorer cette ligne si la date est invalide
+            }
 
-    // Insertion des épisodes
-    $num_episode = intval($episode);
-    $insertEpisode = "INSERT INTO episodes (num_episode, id_saison) VALUES ($num_episode, $id_saison) ON CONFLICT (num_episode, id_saison) DO NOTHING;";
-    pg_query($conn, $insertEpisode);
+            // Gérer les profils
+            if ($insertProfil->execute([':nom_profil' => $nomProfil])) {
+                $idProfil = $insertProfil->fetchColumn();
+                echo "Profil inséré : $nomProfil avec ID $idProfil\n"; // Débogage
+            } else {
+                echo "Échec de l'insertion du profil : $nomProfil\n"; // Débogage
+            }
 
-    // Récupérer l'ID de l'épisode inséré
-    $result = pg_query($conn, "SELECT id_episode FROM episodes WHERE num_episode = $num_episode AND id_saison = $id_saison;");
-    $episode_row = pg_fetch_assoc($result);
-    $id_episode = $episode_row['id_episode'];
+            // 3. Déterminer si c'est une série ou un film
+            $isSerie = strpos($title, 'Saison') !== false;
 
-    // Insertion des films (si applicable)
-    $nom_film = pg_escape_string($titre_film);
-    if (!empty($nom_film)) {
-        $insertFilm = "INSERT INTO films (nom_film) VALUES ('$nom_film') ON CONFLICT (nom_film) DO NOTHING;";
-        pg_query($conn, $insertFilm);
-        
-        // Récupérer l'ID du film inséré
-        $result = pg_query($conn, "SELECT id_film FROM films WHERE nom_film = '$nom_film';");
-        $film_row = pg_fetch_assoc($result);
-        $id_film = $film_row['id_film'];
+            if ($isSerie) {
+                // Si c'est une série, extraire les informations
+                if (preg_match('/^(.*?):\s*Saison\s*(\d+):.*?\s*\(Épisode\s*(\d+)\)$/u', trim($title), $matches)) {
+                    $nomSerie = $matches[1]; // Le nom de la série
+                    $numSaison = $matches[2]; // Le numéro de saison
+                    $numEpisode = $matches[3]; // Le numéro d'épisode
+                    echo "Titre reconnu : $title, Série : $nomSerie, Saison : $numSaison, Épisode : $numEpisode\n"; // Débogage
+
+                    // Insérer dans la table des séries
+                    if ($insertSerie->execute([':nom_serie' => $nomSerie])) {
+                        $idSerie = $insertSerie->fetchColumn();
+                        echo "Série insérée : $nomSerie avec ID $idSerie\n"; // Débogage
+                    }
+
+                    // Insérer dans la table des saisons
+                    if ($insertSaison->execute([':num_saison' => $numSaison, ':id_serie' => $idSerie])) {
+                        $idSaison = $insertSaison->fetchColumn();
+                        echo "Saison insérée : Saison $numSaison de $nomSerie avec ID $idSaison\n"; // Débogage
+                    }
+
+                    // Insérer dans la table des épisodes
+                    if ($insertEpisode->execute([':id_saison' => $idSaison, ':num_episode' => $numEpisode])) {
+                        $idEpisode = $insertEpisode->fetchColumn();
+                        echo "Épisode inséré : Épisode $numEpisode de Saison $numSaison de $nomSerie avec ID $idEpisode\n"; // Débogage
+                    } else {
+                        echo "Échec de l'insertion de l'épisode pour la saison $numSaison de $nomSerie. Numéro d'épisode : $numEpisode\n";
+                    }
+
+                    // Insérer dans visionnages si idEpisode est défini
+                    if (isset($idEpisode)) {
+                        $insertVisionnage->execute([
+                            ':id_profil' => $idProfil,
+                            ':id_episode' => $idEpisode,
+                            ':id_film' => null,
+                            ':debut_visionnage' => $debutVisionnage->format('Y-m-d H:i:s'),
+                            ':duree_visionnage' => $dureeVisionnage
+                        ]);
+                        echo "Visionnage inséré pour le profil $nomProfil, Épisode ID $idEpisode.\n"; // Débogage
+                    } else {
+                        echo "Numéro d'épisode non défini pour le titre : $title. Ignorer l'insertion dans visionnages.\n";
+                    }
+
+                } else {
+                    echo "Format du titre non valide : $title. Ignorer.\n"; // Afficher le titre non valide
+                    continue; // Ignorer cette ligne si le format est invalide
+                }
+
+            } else {
+                // Si c'est un film
+                if ($insertFilm->execute([':nom_film' => $title])) {
+                    $idFilm = $insertFilm->fetchColumn();
+                    echo "Film inséré : $title avec ID $idFilm\n"; // Débogage
+
+                    // Insérer dans visionnages
+                    $insertVisionnage->execute([
+                        ':id_profil' => $idProfil,
+                        ':id_episode' => null,
+                        ':id_film' => $idFilm,
+                        ':debut_visionnage' => $debutVisionnage->format('Y-m-d H:i:s'),
+                        ':duree_visionnage' => $dureeVisionnage
+                    ]);
+                    echo "Visionnage inséré pour le profil $nomProfil, Film ID $idFilm.\n"; // Débogage
+                }
+
+            }
+
+            // Gérer les appareils
+            if ($insertAppareil->execute([':type_appareil' => $deviceType])) {
+                $idAppareil = $insertAppareil->fetchColumn();
+                echo "Appareil inséré : $deviceType avec ID $idAppareil\n"; // Débogage
+            } else {
+                echo "Échec de l'insertion de l'appareil : $deviceType\n"; // Débogage
+            }
+
+            // Insérer dans visionnage_appareil
+            $insertVisionnageAppareil->execute([
+                ':id_visionnage' => $pdo->lastInsertId(),
+                ':id_appareil' => $idAppareil
+            ]);
+        }
+
+        fclose($handle);
     } else {
-        $id_film = null;
+        echo "Erreur lors de l'ouverture du fichier.\n";
     }
-
-    // Insertion des visionnages
-    $debut_visionnage = pg_escape_string($debut_visionnage);
-    $fin_visionnage = pg_escape_string($fin_visionnage);
-    $duree_visionnage = "EXTRACT(EPOCH FROM ('$fin_visionnage'::timestamp - '$debut_visionnage'::timestamp)) * interval '1 second'"; 
-
-    $insertVisionnage = "INSERT INTO visionnages (id_profil, id_episode, id_film, debut_visionnage, fin_visionnage, duree_visionnage) VALUES (
-        (SELECT id_profil FROM profils WHERE nom_profil = '$nom_profil'),
-        $id_episode,
-        $id_film,
-        '$debut_visionnage',
-        '$fin_visionnage',
-        $duree_visionnage
-    );";
-    pg_query($conn, $insertVisionnage);
-
-    // Insertion des appareils
-    $type_appareil = pg_escape_string($appareil);
-    $insertAppareil = "INSERT INTO appareils (type_appareil) VALUES ('$type_appareil') ON CONFLICT (type_appareil) DO NOTHING;";
-    pg_query($conn, $insertAppareil);
-    
-    // Récupérer l'ID de l'appareil inséré
-    $result = pg_query($conn, "SELECT id_appareil FROM appareils WHERE type_appareil = '$type_appareil';");
-    $appareil_row = pg_fetch_assoc($result);
-    $id_appareil = $appareil_row['id_appareil'];
-
-    // Lier les visionnages aux appareils
-    $insertVisionnageAppareil = "INSERT INTO visionnage_appareil (id_visionnage, id_appareil) VALUES (
-        (SELECT id_visionnage FROM visionnages WHERE id_profil = (SELECT id_profil FROM profils WHERE nom_profil = '$nom_profil') AND debut_visionnage = '$debut_visionnage'),
-        $id_appareil
-    );";
-    pg_query($conn, $insertVisionnageAppareil);
+} catch (PDOException $e) {
+    echo "Erreur : " . $e->getMessage() . "\n";
 }
-
-// Fermer la connexion
-pg_close($conn);
-echo "Données insérées avec succès!";
 ?>
