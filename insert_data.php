@@ -11,15 +11,26 @@ try {
 
     // Préparation des requêtes
     $insertProfil = $pdo->prepare("INSERT INTO profils (nom_profil) VALUES (:nom_profil) ON CONFLICT (nom_profil) DO NOTHING RETURNING id_profil;");
+    $selectProfil = $pdo->prepare("SELECT id_profil FROM profils WHERE nom_profil = :nom_profil;");
+    
     $insertSerie = $pdo->prepare("INSERT INTO series (nom_serie) VALUES (:nom_serie) ON CONFLICT (nom_serie) DO NOTHING RETURNING id_serie;");
+    $selectSerie = $pdo->prepare("SELECT id_serie FROM series WHERE nom_serie = :nom_serie;");
+    
     $insertSaison = $pdo->prepare("INSERT INTO saisons (num_saison, id_serie) VALUES (:num_saison, :id_serie) ON CONFLICT (num_saison, id_serie) DO NOTHING RETURNING id_saison;");
+    $selectSaison = $pdo->prepare("SELECT id_saison FROM saisons WHERE num_saison = :num_saison AND id_serie = :id_serie;");
+    
     $insertEpisode = $pdo->prepare("INSERT INTO episodes (id_saison, num_episode) VALUES (:id_saison, :num_episode) ON CONFLICT (id_saison, num_episode) DO NOTHING RETURNING id_episode;");
+    $selectEpisode = $pdo->prepare("SELECT id_episode FROM episodes WHERE id_saison = :id_saison AND num_episode = :num_episode;");
+    
     $insertFilm = $pdo->prepare("INSERT INTO films (nom_film) VALUES (:nom_film) ON CONFLICT (nom_film) DO NOTHING RETURNING id_film;");
+    $selectFilm = $pdo->prepare("SELECT id_film FROM films WHERE nom_film = :nom_film;");
     
     // Mise à jour pour inclure id_saison et id_serie dans l'insertion de visionnages
     $insertVisionnage = $pdo->prepare("INSERT INTO visionnages (id_profil, id_episode, id_film, id_saison, id_serie, debut_visionnage, duree_visionnage) VALUES (:id_profil, :id_episode, :id_film, :id_saison, :id_serie, :debut_visionnage, :duree_visionnage);");
     
     $insertAppareil = $pdo->prepare("INSERT INTO appareils (type_appareil) VALUES (:type_appareil) ON CONFLICT (type_appareil) DO NOTHING RETURNING id_appareil;");
+    $selectAppareil = $pdo->prepare("SELECT id_appareil FROM appareils WHERE type_appareil = :type_appareil;");
+    
     $insertVisionnageAppareil = $pdo->prepare("INSERT INTO visionnage_appareil (id_visionnage, id_appareil) VALUES (:id_visionnage, :id_appareil);");
 
     // Ouverture du fichier CSV
@@ -57,107 +68,112 @@ try {
                 $debutVisionnage = DateTime::createFromFormat('Y-m-d H:i:s', $debutVisionnageString);
             }
 
-            // Vérifier si la création de l'objet DateTime a réussi
             if (!$debutVisionnage) {
-                echo "Erreur lors de la création de DateTime pour la chaîne : $debutVisionnageString. Erreurs : " . implode(", ", DateTime::getLastErrors()) . "\n";
+                echo "Erreur lors de la création de DateTime pour la chaîne : $debutVisionnageString.\n";
                 continue; // Ignorer cette ligne si la date est invalide
             }
 
             // Gérer les profils
             if ($insertProfil->execute([':nom_profil' => $nomProfil])) {
                 $idProfil = $insertProfil->fetchColumn();
-                echo "Profil inséré : $nomProfil avec ID $idProfil\n"; // Débogage
-            } else {
-                echo "Échec de l'insertion du profil : $nomProfil\n"; // Débogage
+                if (!$idProfil) {
+                    $selectProfil->execute([':nom_profil' => $nomProfil]);
+                    $idProfil = $selectProfil->fetchColumn();
+                }
+                echo "Profil inséré ou trouvé : $nomProfil avec ID $idProfil\n"; // Débogage
             }
 
-            // 3. Déterminer si c'est une série ou un film
+            // Déterminer si c'est une série ou un film
             $isSerie = strpos($title, 'Saison') !== false;
 
             if ($isSerie) {
-                // Si c'est une série, extraire les informations
                 if (preg_match('/^(.*?):\s*Saison\s*(\d+):.*?\s*\(Épisode\s*(\d+)\)$/u', trim($title), $matches)) {
-                    $nomSerie = $matches[1]; // Le nom de la série
-                    $numSaison = $matches[2]; // Le numéro de saison
-                    $numEpisode = $matches[3]; // Le numéro d'épisode
-                    echo "Titre reconnu : $title, Série : $nomSerie, Saison : $numSaison, Épisode : $numEpisode\n"; // Débogage
+                    $nomSerie = $matches[1]; 
+                    $numSaison = $matches[2]; 
+                    $numEpisode = $matches[3]; 
 
-                    // Insérer dans la table des séries
+                    // Gérer les séries
                     if ($insertSerie->execute([':nom_serie' => $nomSerie])) {
                         $idSerie = $insertSerie->fetchColumn();
-                        echo "Série insérée : $nomSerie avec ID $idSerie\n"; // Débogage
+                        if (!$idSerie) {
+                            $selectSerie->execute([':nom_serie' => $nomSerie]);
+                            $idSerie = $selectSerie->fetchColumn();
+                        }
                     }
 
-                    // Insérer dans la table des saisons
+                    // Gérer les saisons
                     if ($insertSaison->execute([':num_saison' => $numSaison, ':id_serie' => $idSerie])) {
                         $idSaison = $insertSaison->fetchColumn();
-                        echo "Saison insérée : Saison $numSaison de $nomSerie avec ID $idSaison\n"; // Débogage
+                        if (!$idSaison) {
+                            $selectSaison->execute([':num_saison' => $numSaison, ':id_serie' => $idSerie]);
+                            $idSaison = $selectSaison->fetchColumn();
+                        }
                     }
 
-                    // Insérer dans la table des épisodes
+                    // Gérer les épisodes
                     if ($insertEpisode->execute([':id_saison' => $idSaison, ':num_episode' => $numEpisode])) {
                         $idEpisode = $insertEpisode->fetchColumn();
-                        echo "Épisode inséré : Épisode $numEpisode de Saison $numSaison de $nomSerie avec ID $idEpisode\n"; // Débogage
-                    } else {
-                        echo "Échec de l'insertion de l'épisode pour la saison $numSaison de $nomSerie. Numéro d'épisode : $numEpisode\n";
+                        if (!$idEpisode) {
+                            $selectEpisode->execute([':id_saison' => $idSaison, ':num_episode' => $numEpisode]);
+                            $idEpisode = $selectEpisode->fetchColumn();
+                        }
                     }
 
-                    // Insérer dans visionnages si idEpisode est défini
+                    // Insérer dans visionnages
                     if (isset($idEpisode)) {
-                        // Maintenant, inclure id_saison et id_serie dans l'insertion
                         $insertVisionnage->execute([
                             ':id_profil' => $idProfil,
                             ':id_episode' => $idEpisode,
                             ':id_film' => null,
-                            ':id_saison' => $idSaison, // Nouveau paramètre
-                            ':id_serie' => $idSerie,   // Nouveau paramètre
+                            ':id_saison' => $idSaison,
+                            ':id_serie' => $idSerie,
                             ':debut_visionnage' => $debutVisionnage->format('Y-m-d H:i:s'),
                             ':duree_visionnage' => $dureeVisionnage
                         ]);
-                        echo "Visionnage inséré pour le profil $nomProfil, Épisode ID $idEpisode.\n"; // Débogage
-                    } else {
-                        echo "Numéro d'épisode non défini pour le titre : $title. Ignorer l'insertion dans visionnages.\n";
+                        echo "Visionnage inséré pour le profil $nomProfil, Épisode ID $idEpisode.\n"; 
                     }
 
                 } else {
-                    echo "Format du titre non valide : $title. Ignorer.\n"; // Afficher le titre non valide
-                    continue; // Ignorer cette ligne si le format est invalide
+                    echo "Format du titre non valide : $title. Ignorer.\n";
+                    continue; 
                 }
 
             } else {
                 // Si c'est un film
                 if ($insertFilm->execute([':nom_film' => $title])) {
                     $idFilm = $insertFilm->fetchColumn();
-                    echo "Film inséré : $title avec ID $idFilm\n"; // Débogage
+                    if (!$idFilm) {
+                        $selectFilm->execute([':nom_film' => $title]);
+                        $idFilm = $selectFilm->fetchColumn();
+                    }
 
-                    // Insérer dans visionnages
                     $insertVisionnage->execute([
                         ':id_profil' => $idProfil,
                         ':id_episode' => null,
                         ':id_film' => $idFilm,
-                        ':id_saison' => null, // Pas de saison pour les films
-                        ':id_serie' => null,   // Pas de série pour les films
+                        ':id_saison' => null, 
+                        ':id_serie' => null,   
                         ':debut_visionnage' => $debutVisionnage->format('Y-m-d H:i:s'),
                         ':duree_visionnage' => $dureeVisionnage
                     ]);
-                    echo "Visionnage inséré pour le profil $nomProfil, Film ID $idFilm.\n"; // Débogage
+                    echo "Visionnage inséré pour le profil $nomProfil, Film ID $idFilm.\n"; 
                 }
-
             }
 
             // Gérer les appareils
             if ($insertAppareil->execute([':type_appareil' => $deviceType])) {
                 $idAppareil = $insertAppareil->fetchColumn();
-                echo "Appareil inséré : $deviceType avec ID $idAppareil\n"; // Débogage
-            } else {
-                echo "Échec de l'insertion de l'appareil : $deviceType\n"; // Débogage
+                if (!$idAppareil) {
+                    $selectAppareil->execute([':type_appareil' => $deviceType]);
+                    $idAppareil = $selectAppareil->fetchColumn();
+                }
+
+                $insertVisionnageAppareil->execute([
+                    ':id_visionnage' => $pdo->lastInsertId(),
+                    ':id_appareil' => $idAppareil
+                ]);
             }
 
-            // Insérer dans visionnage_appareil
-            $insertVisionnageAppareil->execute([
-                ':id_visionnage' => $pdo->lastInsertId(),
-                ':id_appareil' => $idAppareil
-            ]);
         }
 
         fclose($handle);
