@@ -1,5 +1,4 @@
 <?php
-// Connexion à la base de données PostgreSQL
 $dsn = 'pgsql:host=bdd.h91.co;dbname=exo1_hugo';
 $user = 'hugo';
 $password = 'tp1_hugo';
@@ -7,7 +6,7 @@ $password = 'tp1_hugo';
 try {
     $pdo = new PDO($dsn, $user, $password);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    echo "Connexion à la base de données réussie.\n"; // Vérification de connexion
+    echo "Connexion à la base de données réussie.\n";
 
     // Préparation des requêtes
     $insertProfil = $pdo->prepare("INSERT INTO profils (nom_profil) VALUES (:nom_profil) ON CONFLICT (nom_profil) DO NOTHING RETURNING id_profil;");
@@ -25,7 +24,6 @@ try {
     $insertFilm = $pdo->prepare("INSERT INTO films (nom_film) VALUES (:nom_film) ON CONFLICT (nom_film) DO NOTHING RETURNING id_film;");
     $selectFilm = $pdo->prepare("SELECT id_film FROM films WHERE nom_film = :nom_film;");
     
-    // Mise à jour pour inclure id_saison et id_serie dans l'insertion de visionnages
     $insertVisionnage = $pdo->prepare("INSERT INTO visionnages (id_profil, id_episode, id_film, id_saison, id_serie, debut_visionnage, duree_visionnage) VALUES (:id_profil, :id_episode, :id_film, :id_saison, :id_serie, :debut_visionnage, :duree_visionnage);");
     
     $insertAppareil = $pdo->prepare("INSERT INTO appareils (type_appareil) VALUES (:type_appareil) ON CONFLICT (type_appareil) DO NOTHING RETURNING id_appareil;");
@@ -35,11 +33,13 @@ try {
 
     // Ouverture du fichier CSV
     if (($handle = fopen('ViewingActivity.csv', 'r')) !== false) {
-        // Sauter l'en-tête
+
+        // On saute l'en-tête
         fgetcsv($handle);
 
         while (($data = fgetcsv($handle)) !== false) {
-            // Extraction des données
+
+            // Extraction des données line par line.
             $nomProfil = trim($data[0]);
             $debutVisionnageString = trim($data[1]);
             $dureeVisionnage = trim($data[2]);
@@ -47,22 +47,21 @@ try {
             $title = trim($data[4]);
             $deviceType = trim($data[6]);
 
-            // Débogage de l'extraction des données
             echo "Traitement de la ligne :\n";
             echo "Profil : $nomProfil, Début : $debutVisionnageString, Durée : $dureeVisionnage, Attributes : $attributes, Title : $title, Device Type : $deviceType\n";
 
-            // Conditions pour filtrer les lignes
+            // Filtrage les lignes
             if (!empty($attributes) && strpos($attributes, 'User_Interaction') === false) {
                 echo "Ligne ignorée en raison d'attributs non valides.\n";
-                continue; // Ignorer cette ligne si elle ne respecte pas les conditions
+                continue;
             }
 
             if (!empty($data[5])) {
                 echo "Ligne ignorée en raison de Supplemental Video Type non vide.\n";
-                continue; // Ignorer cette ligne si la colonne est non vide
+                continue;
             }
 
-            // Vérifier plusieurs formats de date
+            // Plusieurs formats de date
             $debutVisionnage = DateTime::createFromFormat('Y/m/d - H:i:s', $debutVisionnageString);
             if (!$debutVisionnage) {
                 $debutVisionnage = DateTime::createFromFormat('Y-m-d H:i:s', $debutVisionnageString);
@@ -70,7 +69,7 @@ try {
 
             if (!$debutVisionnage) {
                 echo "Erreur lors de la création de DateTime pour la chaîne : $debutVisionnageString.\n";
-                continue; // Ignorer cette ligne si la date est invalide
+                continue;
             }
 
             // Gérer les profils
@@ -80,18 +79,21 @@ try {
                     $selectProfil->execute([':nom_profil' => $nomProfil]);
                     $idProfil = $selectProfil->fetchColumn();
                 }
-                echo "Profil inséré ou trouvé : $nomProfil avec ID $idProfil\n"; // Débogage
+                echo "Profil inséré ou trouvé : $nomProfil avec ID $idProfil\n";
             }
 
-            // Déterminer si c'est une série ou un film
-            $isSerie = strpos($title, 'Saison') !== false;
+            // Film ou Série ?
+            $isSerie = strpos($title, 'Saison') !== false || strpos($title, 'Partie') !== false || strpos($title, 'Collection') !== false || strpos($title, 'Season') !== false;
 
             if ($isSerie) {
-                if (preg_match('/^(.*?):\s*Saison\s*(\d+):.*?\s*\(Épisode\s*(\d+)\)$/u', trim($title), $matches)) {
-                    $nomSerie = $matches[1]; 
-                    $numSaison = $matches[2]; 
-                    $numEpisode = $matches[3]; 
-
+                
+                if (preg_match('/^(.*?):\s*(Saison|Partie|Collection|Season)\s*(\d+):.*?\s*\(Épisode\s*(\d+)\)$/u', trim($title), $matches)) {
+                    $nomSerie = $matches[1];
+                    $numSaison = $matches[3];
+                    $numEpisode = $matches[4];
+            
+                    echo "Titre reconnu : $title, Série : $nomSerie, Saison : $numSaison, Épisode : $numEpisode\n";
+            
                     // Gérer les séries
                     if ($insertSerie->execute([':nom_serie' => $nomSerie])) {
                         $idSerie = $insertSerie->fetchColumn();
@@ -100,7 +102,7 @@ try {
                             $idSerie = $selectSerie->fetchColumn();
                         }
                     }
-
+            
                     // Gérer les saisons
                     if ($insertSaison->execute([':num_saison' => $numSaison, ':id_serie' => $idSerie])) {
                         $idSaison = $insertSaison->fetchColumn();
@@ -109,7 +111,7 @@ try {
                             $idSaison = $selectSaison->fetchColumn();
                         }
                     }
-
+            
                     // Gérer les épisodes
                     if ($insertEpisode->execute([':id_saison' => $idSaison, ':num_episode' => $numEpisode])) {
                         $idEpisode = $insertEpisode->fetchColumn();
@@ -118,7 +120,7 @@ try {
                             $idEpisode = $selectEpisode->fetchColumn();
                         }
                     }
-
+            
                     // Insérer dans visionnages
                     if (isset($idEpisode)) {
                         $insertVisionnage->execute([
@@ -132,21 +134,21 @@ try {
                         ]);
                         echo "Visionnage inséré pour le profil $nomProfil, Épisode ID $idEpisode.\n"; 
                     }
-
+            
                 } else {
                     echo "Format du titre non valide : $title. Ignorer.\n";
                     continue; 
                 }
-
+            
             } else {
-                // Si c'est un film
+                // Gérer les films
                 if ($insertFilm->execute([':nom_film' => $title])) {
                     $idFilm = $insertFilm->fetchColumn();
                     if (!$idFilm) {
                         $selectFilm->execute([':nom_film' => $title]);
                         $idFilm = $selectFilm->fetchColumn();
                     }
-
+            
                     $insertVisionnage->execute([
                         ':id_profil' => $idProfil,
                         ':id_episode' => null,
@@ -159,6 +161,7 @@ try {
                     echo "Visionnage inséré pour le profil $nomProfil, Film ID $idFilm.\n"; 
                 }
             }
+            
 
             // Gérer les appareils
             if ($insertAppareil->execute([':type_appareil' => $deviceType])) {
