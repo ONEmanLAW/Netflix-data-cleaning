@@ -22,5 +22,4 @@ module.exports = async function(client){
 }
 
 
-// Requete marche correctement dans la BDD.
 
