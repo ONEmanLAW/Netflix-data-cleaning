@@ -31,7 +31,7 @@ try {
     
     $insertVisionnageAppareil = $pdo->prepare("INSERT INTO visionnage_appareil (id_visionnage, id_appareil) VALUES (:id_visionnage, :id_appareil);");
 
-    // Ouverture du fichier CSV
+    
     if (($handle = fopen('ViewingActivity.csv', 'r')) !== false) {
 
         // On saute l'en-tête
