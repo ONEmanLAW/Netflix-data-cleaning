@@ -31,7 +31,7 @@ try {
     
     $insertVisionnageAppareil = $pdo->prepare("INSERT INTO visionnage_appareil (id_visionnage, id_appareil) VALUES (:id_visionnage, :id_appareil);");
 
-    
+
     if (($handle = fopen('ViewingActivity.csv', 'r')) !== false) {
 
         // On saute l'en-tête
@@ -51,7 +51,7 @@ try {
             echo "Profil : $nomProfil, Début : $debutVisionnageString, Durée : $dureeVisionnage, Attributes : $attributes, Title : $title, Device Type : $deviceType\n";
 
             // Filtrage les lignes
-            if (!empty($attributes) && strpos($attributes, 'User_Interaction') === false) {
+            if (!empty($attributes) && strpos($attributes, 'User_Interaction') === false && strpos($attributes, 'Autoplayed: user action: Unspecified') === false) {
                 echo "Ligne ignorée en raison d'attributs non valides.\n";
                 continue;
             }

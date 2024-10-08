@@ -4,7 +4,7 @@ module.exports = async function(client){
   `
   SELECT
     s.nom_serie,
-    v.debut_visionnage
+    TO_CHAR(v.debut_visionnage, 'YYYY-MM-DD HH24:MI:SS') AS debut_visionnage
   FROM
     visionnages v
   JOIN
@@ -20,6 +20,7 @@ module.exports = async function(client){
   ORDER BY
     v.debut_visionnage DESC
   LIMIT 1;
+
   `;
 
   const result = await client.query(requete)
