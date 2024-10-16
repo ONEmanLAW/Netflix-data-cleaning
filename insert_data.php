@@ -83,16 +83,16 @@ try {
             }
 
             // Film ou Série ?
-            $isSerie = strpos($title, 'Saison') !== false || strpos($title, 'Partie') !== false || strpos($title, 'Collection') !== false || strpos($title, 'Season') !== false;
+            $isSerie = strpos($title, 'Saison') !== false || strpos($title, 'Partie') !== false || strpos($title, 'Collection') !== false || strpos($title, 'Season') !== false || strpos($title, 'Mini-série') !== false || strpos($title, 'Mini-Series') !== false || strpos($title, 'saison') !== false || strpos($title, 'Épisode') !== false;
 
             if ($isSerie) {
-                
-                if (preg_match('/^(.*?):\s*(Saison|Partie|Collection|Season)\s*(\d+):.*?\s*\(Épisode\s*(\d+)\)$/u', trim($title), $matches)) {
+                // Essayer de capturer les différents formats de séries
+                if (preg_match('/^(.*?):\s*(Saison|Partie|Collection|Season|saison)?\s*(\d+)?\s*:\s*(.*?\(Épisode\s*(\d+)\))$/u', trim($title), $matches)) {
                     $nomSerie = $matches[1];
-                    $numSaison = $matches[3];
-                    $numEpisode = $matches[4];
+                    $numSaison = !empty($matches[3]) ? $matches[3] : '1';  // Utiliser la saison "1" si aucune saison n'est présente
+                    $numEpisode = $matches[5];
             
-                    echo "Titre reconnu : $title, Série : $nomSerie, Saison : $numSaison, Épisode : $numEpisode\n";
+                    echo "Titre reconnu : $title, Série : $nomSerie, Saison : " . ($numSaison ?? '1') . ", Épisode : $numEpisode\n";
             
                     // Gérer les séries
                     if ($insertSerie->execute([':nom_serie' => $nomSerie])) {
@@ -103,7 +103,7 @@ try {
                         }
                     }
             
-                    // Gérer les saisons
+                    // Gérer les saisons (utiliser "1" par défaut si aucune saison explicite)
                     if ($insertSaison->execute([':num_saison' => $numSaison, ':id_serie' => $idSerie])) {
                         $idSaison = $insertSaison->fetchColumn();
                         if (!$idSaison) {
@@ -134,7 +134,6 @@ try {
                         ]);
                         echo "Visionnage inséré pour le profil $nomProfil, Épisode ID $idEpisode.\n"; 
                     }
-            
                 } else {
                     echo "Format du titre non valide : $title. Ignorer.\n";
                     continue; 
@@ -161,7 +160,8 @@ try {
                     echo "Visionnage inséré pour le profil $nomProfil, Film ID $idFilm.\n"; 
                 }
             }
-            
+
+                        
 
             // Gérer les appareils
             if ($insertAppareil->execute([':type_appareil' => $deviceType])) {
