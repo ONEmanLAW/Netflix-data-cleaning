@@ -27,8 +27,8 @@ module.exports = async function(client) {
     console.log('Séries regardées:', resultSeries.rows);
 
     const resultCount = await client.query(queryCount);
-    console.log('Nombre total de séries:', resultCount.rows[0].nombre_series);
+    console.log('Total de séries:', resultCount.rows[0].nombre_series);
   } catch (err) {
-    console.error('Erreur lors de l\'exécution des requêtes:', err);
+    console.error('Erreur', err);
   }
 };

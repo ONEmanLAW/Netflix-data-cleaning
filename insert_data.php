@@ -39,7 +39,7 @@ try {
 
         while (($data = fgetcsv($handle)) !== false) {
 
-            // Extraction des données line par line.
+            
             $nomProfil = trim($data[0]);
             $debutVisionnageString = trim($data[1]);
             $dureeVisionnage = trim($data[2]);
@@ -50,7 +50,7 @@ try {
             echo "Traitement de la ligne :\n";
             echo "Profil : $nomProfil, Début : $debutVisionnageString, Durée : $dureeVisionnage, Attributes : $attributes, Title : $title, Device Type : $deviceType\n";
 
-            // Filtrage les lignes
+            
             if (!empty($attributes) && strpos($attributes, 'User_Interaction') === false && strpos($attributes, 'Autoplayed: user action: Unspecified') === false) {
                 echo "Ligne ignorée en raison d'attributs non valides.\n";
                 continue;
@@ -61,7 +61,7 @@ try {
                 continue;
             }
 
-            // Plusieurs formats de date
+            
             $debutVisionnage = DateTime::createFromFormat('Y/m/d - H:i:s', $debutVisionnageString);
             if (!$debutVisionnage) {
                 $debutVisionnage = DateTime::createFromFormat('Y-m-d H:i:s', $debutVisionnageString);
@@ -89,7 +89,7 @@ try {
                 // Essayer de capturer les différents formats de séries
                 if (preg_match('/^(.*?):\s*(Saison|Partie|Collection|Season|saison)?\s*(\d+)?\s*:\s*(.*?\(Épisode\s*(\d+)\))$/u', trim($title), $matches)) {
                     $nomSerie = $matches[1];
-                    $numSaison = !empty($matches[3]) ? $matches[3] : '1';  // Utiliser la saison "1" si aucune saison n'est présente
+                    $numSaison = !empty($matches[3]) ? $matches[3] : '1';
                     $numEpisode = $matches[5];
             
                     echo "Titre reconnu : $title, Série : $nomSerie, Saison : " . ($numSaison ?? '1') . ", Épisode : $numEpisode\n";
@@ -103,7 +103,7 @@ try {
                         }
                     }
             
-                    // Gérer les saisons (utiliser "1" par défaut si aucune saison explicite)
+                    // Gérer les saisons
                     if ($insertSaison->execute([':num_saison' => $numSaison, ':id_serie' => $idSerie])) {
                         $idSaison = $insertSaison->fetchColumn();
                         if (!$idSaison) {
