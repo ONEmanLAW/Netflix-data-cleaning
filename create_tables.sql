@@ -26,7 +26,7 @@ CREATE TABLE episodes (
     id_episode SERIAL PRIMARY KEY,
     id_saison INTEGER NOT NULL,
     num_episode INTEGER NOT NULL,
-    UNIQUE (id_saison, num_episode),  -- Ajout de la contrainte UNIQUE
+    UNIQUE (id_saison, num_episode),  -- Ajout de contrainte UNIQUE
     FOREIGN KEY (id_saison) REFERENCES saisons (id_saison) ON DELETE CASCADE
 );
 
