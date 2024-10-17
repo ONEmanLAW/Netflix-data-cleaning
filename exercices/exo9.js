@@ -36,7 +36,7 @@ module.exports = async function(client){
 
   const result = await client.query(requete)
   console.log(result.rows)
-}
+};
 
 
 
