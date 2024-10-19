@@ -1,0 +1,25 @@
+1. Combien y-a-t’il de profils sur le compte netflix ? quels sont les comptes disponibles ?
+
+2. Depuis quand le compte est-il abonné à Netflix ? (on partira du principe qu’il a consommé son abonnement le jour où il s’est abonné)
+
+3. Combien de temps chaque profil a passé sur Netflix ?
+
+4. Par profils, quels sont les 4 équipements les plus utilisés pour visionner Netflix ?
+
+5. Donnez la date et heure de début et de fin de visionnage de l’épisode 7 de la saison 3 des nouvelles aventures de Sabrina.
+
+6. Quelle est la dernière série regardée par `Okona` ?
+
+7. Quel est le film le plus long regardé sur netflix ?
+
+8. Lister toutes les **séries** regardées par le profil `Henri` ?
+
+9. Combien de séries et films différents ont étés regardés en 2020 (#COVID) ?
+
+10. Combien de saisons compte la série Friends ? 
+
+11. Quelle est la série avec le plus d’épisodes ? 
+
+12. Quelle vidéo a été vue par tous les profils ?
+
+13. Combien de fois la série **Community** a été vue en entier, en prenant en compte qu’un episode est considéré comme vu entièrement si son visionnage dure plus de 20 minutes.
