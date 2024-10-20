@@ -34,5 +34,4 @@ Voici les étapes à suivre pour lancer le projet sur votre machine locale :
    ```bash
    node index.js exo'numéro exercice'
 
-
 # MERCI HENRI !
