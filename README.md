@@ -1,52 +1,38 @@
-# TP PostgreSQL
-A base code for the [PostgreSQL](https://decima.notion.site/Exercice-PostgreSQL-a7e47b9571974e9c85c64a90354c63f5)
+# Netflix Data Cleaning
 
-## Requirements
-- NodeJS
-- Docker with Docker-compose
+## Description du Projet
+
+Le projet **Netflix Data Cleaning** a pour but de traiter un fichier CSV représentant l'historique des visionnages d'un profil Netflix lambda. Le but principal est de nettoyer ces données, les structurer et les insérer dans une base de données PostgreSQL, afin de pouvoir répondre à 13 questions spécifiques à l'aide de requêtes SQL.
+
+Ces questions couvrent divers aspects comme le nombre de séries regardées, la durée de visionnage des films, la fréquence de visionnage des épisodes, etc. Pour ce faire, les données du fichier CSV ont été filtrées et organisées de manière à fournir des réponses précises.
+
+## Prérequis
+
+Avant de commencer, assurez-vous que les logiciels suivants sont installés sur votre machine :
+
+- **Node.js** : [Télécharger Node.js](https://nodejs.org/)
+- **PostgreSQL** : [Télécharger PostgreSQL](https://www.postgresql.org/download/)
+
+Ces outils sont indispensables pour l'exécution du projet.
+
+## Installation et Lancement du Projet
+
+Voici les étapes à suivre pour lancer le projet sur votre machine locale :
+
+1. **Cloner le projet** :  
+   Clonez le dépôt GitHub du projet en exécutant la commande suivante dans votre terminal :
+   ```bash
+   git clone https://github.com/votre-utilisateur/nom-du-projet.git
+
+2. **Ouvre le projet, va sur le terminal de vscode** :  
+   Exécute la commande suivante dans votre terminal :
+   ```bash
+   npm install pg
+
+3. **Utilisation des requêtes** :  
+   Exécute la commande suivante dans votre terminal :
+   ```bash
+   node index.js exo'numéro exercice'
 
 
-## Getting started
-
-### Installation
-make a copy of `.env.sample` and name it `.env`.
-This file is by default configured to run with the docker-compose or local redis installation.
-
-Then run `yarn` or `npm install` depending on your environment.
-
-### Start PostgreSQL with Docker
-
-Start Postgresql server using `docker-compose up -d`. PostgreSQL port is `5432` and mongo express `8081`.
-
-
-### Usage
-
-Every exercices should be stored in exercices folder.
-To run them just run the following command : 
-
-```
-npm run start ex0
-```
-
-If you have `yarn` you can run
-```
-yarn start ex0
-```
-It will automatically use the file `./exercices/ex0.js`.
-
-In the Exercices folder, you can find a `ex0.js`, a sample for you to create new exercices.
-
-All exercices can be found on [course.larget.fr](https://decima.notion.site/Exercice-PostgreSQL-a7e47b9571974e9c85c64a90354c63f5)
-
----
-
-### Datasets
-
-IMDB :
-- https://datasets.imdbws.com/name.basics.tsv.gz
-- https://datasets.imdbws.com/title.akas.tsv.gz
-- https://datasets.imdbws.com/title.basics.tsv.gz
-- https://datasets.imdbws.com/title.crew.tsv.gz
-- https://datasets.imdbws.com/title.episode.tsv.gz
-- https://datasets.imdbws.com/title.principals.tsv.gz
-- href=https://datasets.imdbws.com/title.ratings.tsv.gz
+# MERCI HENRI !
