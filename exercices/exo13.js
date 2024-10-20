@@ -36,7 +36,7 @@ module.exports = async function(client) {
             e.id_episode
         FROM episodes_community e
         JOIN durations d ON e.id_episode = d.id_episode
-        WHERE d.total_duration >= 1200  -- Total duration in seconds (20 minutes)
+        WHERE d.total_duration >= 1080  -- (18 minutes)
       ),
       series_vues_entierement AS (
         SELECT 
